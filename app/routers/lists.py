@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from app.models import List, ListMember
-from app.schemas import ListCreate, ListResponse
+from app.models import List, ListMember, User
+from app.schemas import ListCreate, ListResponse, AddListMember
 from app.database import get_db
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
 
@@ -27,9 +27,25 @@ def get_lists(db: Session = Depends(get_db), current_user = Depends(get_current_
     return lists
 
 @router.post("/lists/{list_id}/members")
-def add_list_member(list_id : int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def add_list_member(list_id : int, request: AddListMember, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     search_list = db.query(List).where(List.id == list_id).first()
     if not search_list:
         raise HTTPException(status_code=404, detail="List not found")
-    if not search_list.created_by == current_user.id:
+    if search_list.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="User does not own list")
+    user = db.query(User).where(User.email == request.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if search_list.created_by == user.id:
+        raise HTTPException(status_code=409, detail="User owns list")
+    member = db.query(ListMember).where(ListMember.user_id == user.id, ListMember.list_id == list_id).first()
+    if member:
+        raise HTTPException(status_code=409, detail="User already on list")
+    new_member = ListMember(
+        list_id = list_id,
+        user_id = user.id,
+    )
+    db.add(new_member)
+    db.commit()
+    db.refresh(new_member)
+    return {"message": f"User {user.name} added to list {search_list.name}"}
