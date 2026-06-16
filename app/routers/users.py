@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.models import User
@@ -27,7 +29,6 @@ def login(login : UserLogin, db: Session = Depends(get_db)):
                             detail="Incorrect email or password")
 
     assert isinstance(user, User)
-
     if not verify_password(login.password, user.password):
         raise HTTPException(status_code=401,
                             detail="Incorrect email or password")

@@ -28,3 +28,13 @@ class ListResponse(BaseModel):
 
 class AddListMember(BaseModel):
     email: str
+
+class MovieCreate(BaseModel):
+    title: str
+    release_year: int
+
+class MovieResponse(BaseModel):
+    id: int
+    title: str
+    release_year: int
+    created_at: datetime
